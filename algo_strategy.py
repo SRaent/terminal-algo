@@ -161,21 +161,51 @@ class AlgoStrategy(gamelib.AlgoCore):
         return nxt_mvs
     
     
-    def r8gr8(self,state_mat,info_vec):
-        return random.randint(-1000,1000)
+    def r8gr8(self,state_mat,info_vec,game_state):
+        state_vec = []
+        for pos in all_pos:
+            for t in range(0,2):
+                state_vec.append(state_mat[t][pos[0]][pos[1]])
+        
+        state_vec = state_vec + info_vec[0] + info_vec[1] + info_vec[2]
+        
+        state_vec.append(game_state.get_resource(game_state.CORES,0))
+        state_vec.append(game_state.get_resource(game_state.CORES,1))
+        state_vec.append(game_state.get_resource(game_state.BITS,0))
+        state_vec.append(game_state.get_resource(game_state.BITS,1))
+        
+        return random.randint(-100,100)
+        
+       
         
     
     def softmax(self,r8ed):
         enum = 0.0
         for x in r8ed:
-            enum = denom + math.exp(x)
+            enum = enum + math.exp(x)
             
         ret = []
         
         for x in r8ed:
-            ret.append(math.log(enum/math.exp(x)))
+            ret.append(math.exp(x)/enum)
             
         return ret
+        
+    
+    def pick_w8ed(self,weights):
+        r = random.random()
+        s = 0.0
+        #weiths = weights / sum(weights)
+        i = -1
+        while s < r and i < len(weights) - 1:
+            i = i + 1
+            s = s + weights[i]
+            
+        if i < 0:
+            i = 0
+            
+        
+        return i
     
     def test_strategy(self, game_state):
         
@@ -212,16 +242,28 @@ class AlgoStrategy(gamelib.AlgoCore):
         nxt_mvs = self.nxt_moves(game_state, state_mat, info_vec)
         
         
-        
-        
-        rmv = random.randint(0,len(nxt_mvs))
-        while not rmv == len(nxt_mvs):
-            game_state.attempt_spawn(nxt_mvs[rmv][3],nxt_mvs[rmv][2])
+        weights = []
+        for st in nxt_mvs:
+            weights.append(self.r8gr8(st[0],st[1],game_state))
             
+        weights = self.softmax(weights)
+        
+        ind = self.pick_w8ed(weights)
+        
+        #print(max(weights))
+        
+        
+        while not ind == len(nxt_mvs):
+            game_state.attempt_spawn(nxt_mvs[ind][3],nxt_mvs[ind][2])
             state_mat = self.state_matrix(game_state)
             info_vec = self.info_vector(game_state)
             nxt_mvs = self.nxt_moves(game_state, state_mat, info_vec)
-            rmv = random.randint(0,len(nxt_mvs))
+            
+            weights = []
+            for st in nxt_mvs:
+                weights.append(self.r8gr8(st[0],st[1],game_state))
+            weights = self.softmax(weights)
+            ind = self.pick_w8ed(weights)
 
 if __name__ == "__main__":
     algo = AlgoStrategy()
