@@ -1,9 +1,9 @@
 import gamelib
 import random
 import math
-import numpy as np
+#import numpy as np
 #np.set_printoptions(threshold=np.inf)
-from numpy import zeros
+#from numpy import zeros
 import warnings
 from sys import maxsize
 
@@ -35,6 +35,21 @@ class AlgoStrategy(gamelib.AlgoCore):
         super().__init__()
         random.seed()
 
+
+    def zrs(self, dims):
+        ret = []
+        tmp = 0.0
+        for dim in reversed(dims):
+            while len(ret) < dim:
+                ret.append(tmp)
+            tmp = ret
+            ret = []
+        return tmp
+        
+    
+    
+    
+    
     def on_game_start(self, config):
         """ 
         Read in config and perform any initial setup here 
@@ -75,17 +90,17 @@ class AlgoStrategy(gamelib.AlgoCore):
     
     def state_matrix(self, game_state):
         state_mat = []
-        state_mat = zeros([3,28,28])
+        state_mat = self.zrs([3,28,28])
         for pos in all_pos:
             units = game_state.game_map[pos[0],pos[1]]
             for unit in units:
                 #print(unit.player_index,unit.unit_type)
                 if unit.unit_type == 'FF':
-                    state_mat[0,pos[0],pos[1]] = state_mat[0,pos[0],pos[1]] + 0.5 + 0.5*unit.stability/unit.max_stability
+                    state_mat[0][pos[0]][pos[1]] = state_mat[0][pos[0]][pos[1]] + 0.5 + 0.5*unit.stability/unit.max_stability
                 elif unit.unit_type == 'EF':
-                    state_mat[1,pos[0],pos[1]] = state_mat[1,pos[0],pos[1]] + 0.5 + 0.5*unit.stability/unit.max_stability
+                    state_mat[1][pos[0]][pos[1]] = state_mat[1][pos[0]][pos[1]] + 0.5 + 0.5*unit.stability/unit.max_stability
                 elif unit.unit_type == 'DF':
-                    state_mat[2,pos[0],pos[1]] = state_mat[2,pos[0],pos[1]] + 0.5 + 0.5*unit.stability/unit.max_stability
+                    state_mat[2][pos[0]][pos[1]] = state_mat[2][pos[0]][pos[1]] + 0.5 + 0.5*unit.stability/unit.max_stability
                 #else:
                     #print('Some thing wong with state_matrix')
                 
@@ -95,20 +110,20 @@ class AlgoStrategy(gamelib.AlgoCore):
     
     def info_vector(self, game_state):
         info_vec = []
-        info_vec = zeros([3,28])
+        info_vec = self.zrs([3,28])
         
         for pos in my_edge_pos:
             units = game_state.game_map[pos[0],pos[1]]
             for unit in units:
                 #print(unit.unit_type)
                 if unit.unit_type == 'PI':
-                    info_vec[0,pos[0]] = info_vec[0,pos[0]] + 0.5 + 0.5*unit.stability/unit.max_stability
+                    info_vec[0][pos[0]] = info_vec[0][pos[0]] + 0.5 + 0.5*unit.stability/unit.max_stability
                 elif unit.unit_type == 'EI':
-                    info_vec[1,pos[0]] = info_vec[1,pos[0]] + 0.5 + 0.5*unit.stability/unit.max_stability
+                    info_vec[1][pos[0]] = info_vec[1][pos[0]] + 0.5 + 0.5*unit.stability/unit.max_stability
                 elif unit.unit_type == 'SI':
-                    info_vec[2,pos[0]] = info_vec[2,pos[0]] + 0.5 + 0.5*unit.stability/unit.max_stability
+                    info_vec[2][pos[0]] = info_vec[2][pos[0]] + 0.5 + 0.5*unit.stability/unit.max_stability
                     
-        np.save('/home/moritz/Documents/C1GamesStarterKit-master/algos/rating-algo/vec.dat',info_vec)
+        #np.save('/home/moritz/Documents/C1GamesStarterKit-master/algos/rating-algo/vec.dat',info_vec)
         return info_vec
     
     def nxt_moves(self, game_state, state_mat, info_vec):
@@ -118,33 +133,49 @@ class AlgoStrategy(gamelib.AlgoCore):
         
         for pos in all_my_pos:
             if game_state.can_spawn(FILTER,pos):
-                new_state_mat[0,pos[0],pos[1]] = state_mat[0,pos[0],pos[1]] + 1
-                nxt_mvs.append([new_state_mat,info_vec,pos,0])
+                new_state_mat[0][pos[0]][pos[1]] = state_mat[0][pos[0]][pos[1]] + 1
+                nxt_mvs.append([new_state_mat,info_vec,pos,FILTER])
             
             if game_state.can_spawn(ENCRYPTOR,pos):
-                new_state_mat[1,pos[0],pos[1]] = state_mat[1,pos[0],pos[1]] + 1
-                nxt_mvs.append([new_state_mat,info_vec,pos,1])
+                new_state_mat[1][pos[0]][pos[1]] = state_mat[1][pos[0]][pos[1]] + 1
+                nxt_mvs.append([new_state_mat,info_vec,pos,ENCRYPTOR])
             
             if game_state.can_spawn(DESTRUCTOR,pos):
-                new_state_mat[2,pos[0],pos[1]] = state_mat[2,pos[0],pos[1]] + 1
-                nxt_mvs.append([new_state_mat,info_vec,pos,2])
+                new_state_mat[2][pos[0]][pos[1]] = state_mat[2][pos[0]][pos[1]] + 1
+                nxt_mvs.append([new_state_mat,info_vec,pos,DESTRUCTOR])
             
         
         for pos in my_edge_pos:
             if game_state.can_spawn(PING,pos):
-                new_info_vec[0,pos[0]] = info_vec[0,pos[0]] + 1
-                nxt_mvs.append([state_mat,new_info_vec,pos,3])
+                new_info_vec[0][pos[0]] = info_vec[0][pos[0]] + 1
+                nxt_mvs.append([state_mat,new_info_vec,pos,PING])
             
             if game_state.can_spawn(EMP,pos):
-                new_info_vec[1,pos[0]] = info_vec[1,pos[0]] + 1
-                nxt_mvs.append([state_mat,new_info_vec,pos,4])
+                new_info_vec[1][pos[0]] = info_vec[1][pos[0]] + 1
+                nxt_mvs.append([state_mat,new_info_vec,pos,EMP])
             
             if game_state.can_spawn(SCRAMBLER,pos):
-                new_info_vec[2,pos[0]] = info_vec[2,pos[0]] + 1
-                nxt_mvs.append([state_mat,new_info_vec,pos,5])
+                new_info_vec[2][pos[0]] = info_vec[2][pos[0]] + 1
+                nxt_mvs.append([state_mat,new_info_vec,pos,SCRAMBLER])
             
         return nxt_mvs
     
+    
+    def r8gr8(self,state_mat,info_vec):
+        return random.randint(-1000,1000)
+        
+    
+    def softmax(self,r8ed):
+        enum = 0.0
+        for x in r8ed:
+            enum = denom + math.exp(x)
+            
+        ret = []
+        
+        for x in r8ed:
+            ret.append(math.log(enum/math.exp(x)))
+            
+        return ret
     
     def test_strategy(self, game_state):
         
@@ -180,6 +211,17 @@ class AlgoStrategy(gamelib.AlgoCore):
         info_vec = self.info_vector(game_state)
         nxt_mvs = self.nxt_moves(game_state, state_mat, info_vec)
         
+        
+        
+        
+        rmv = random.randint(0,len(nxt_mvs))
+        while not rmv == len(nxt_mvs):
+            game_state.attempt_spawn(nxt_mvs[rmv][3],nxt_mvs[rmv][2])
+            
+            state_mat = self.state_matrix(game_state)
+            info_vec = self.info_vector(game_state)
+            nxt_mvs = self.nxt_moves(game_state, state_mat, info_vec)
+            rmv = random.randint(0,len(nxt_mvs))
 
 if __name__ == "__main__":
     algo = AlgoStrategy()
