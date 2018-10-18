@@ -100,7 +100,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         for pos in my_edge_pos:
             units = game_state.game_map[pos[0],pos[1]]
             for unit in units:
-                print(unit.unit_type)
+                #print(unit.unit_type)
                 if unit.unit_type == 'PI':
                     info_vec[0,pos[0]] = info_vec[0,pos[0]] + 0.5 + 0.5*unit.stability/unit.max_stability
                 elif unit.unit_type == 'EI':
@@ -108,6 +108,43 @@ class AlgoStrategy(gamelib.AlgoCore):
                 elif unit.unit_type == 'SI':
                     info_vec[2,pos[0]] = info_vec[2,pos[0]] + 0.5 + 0.5*unit.stability/unit.max_stability
                     
+        np.save('/home/moritz/Documents/C1GamesStarterKit-master/algos/rating-algo/vec.dat',info_vec)
+        return info_vec
+    
+    def nxt_moves(self, game_state, state_mat, info_vec):
+        nxt_mvs = []
+        new_state_mat = state_mat
+        new_info_vec = info_vec
+        
+        for pos in all_my_pos:
+            if game_state.can_spawn(FILTER,pos):
+                new_state_mat[0,pos[0],pos[1]] = state_mat[0,pos[0],pos[1]] + 1
+                nxt_mvs.append([new_state_mat,info_vec,pos,0])
+            
+            if game_state.can_spawn(ENCRYPTOR,pos):
+                new_state_mat[1,pos[0],pos[1]] = state_mat[1,pos[0],pos[1]] + 1
+                nxt_mvs.append([new_state_mat,info_vec,pos,1])
+            
+            if game_state.can_spawn(DESTRUCTOR,pos):
+                new_state_mat[2,pos[0],pos[1]] = state_mat[2,pos[0],pos[1]] + 1
+                nxt_mvs.append([new_state_mat,info_vec,pos,2])
+            
+        
+        for pos in my_edge_pos:
+            if game_state.can_spawn(PING,pos):
+                new_info_vec[0,pos[0]] = info_vec[0,pos[0]] + 1
+                nxt_mvs.append([state_mat,new_info_vec,pos,3])
+            
+            if game_state.can_spawn(EMP,pos):
+                new_info_vec[1,pos[0]] = info_vec[1,pos[0]] + 1
+                nxt_mvs.append([state_mat,new_info_vec,pos,4])
+            
+            if game_state.can_spawn(SCRAMBLER,pos):
+                new_info_vec[2,pos[0]] = info_vec[2,pos[0]] + 1
+                nxt_mvs.append([state_mat,new_info_vec,pos,5])
+            
+        return nxt_mvs
+    
     
     def test_strategy(self, game_state):
         
@@ -130,15 +167,18 @@ class AlgoStrategy(gamelib.AlgoCore):
         while game_state.can_spawn(FILTER,rpos):
             game_state.attempt_spawn(FILTER,rpos)
             rpos = all_my_pos[random.randint(0, len(all_my_pos) - 1)]
-        '''
+        
+        
+        
         rpos = my_edge_pos[random.randint(0,len(my_edge_pos) - 1)]
         while game_state.can_spawn(PING,rpos):
             game_state.attempt_spawn(PING,rpos)
             rpos = my_edge_pos[random.randint(0, len(my_edge_pos) - 1)]
+        '''
         
-        
-        self.state_matrix(game_state)
-        self.info_vector(game_state)
+        state_mat = self.state_matrix(game_state)
+        info_vec = self.info_vector(game_state)
+        nxt_mvs = self.nxt_moves(game_state, state_mat, info_vec)
         
 
 if __name__ == "__main__":
