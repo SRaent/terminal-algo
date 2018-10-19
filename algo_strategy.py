@@ -1,7 +1,7 @@
 import gamelib
 import random
 import math
-#import numpy as np
+import numpy as np
 #np.set_printoptions(threshold=np.inf)
 #from numpy import zeros
 import warnings
@@ -36,18 +36,18 @@ class AlgoStrategy(gamelib.AlgoCore):
         random.seed()
 
 
-    def zrs(self, dims):
+
+
+    
+    def zrs(self,dims):
         ret = []
-        tmp = 0.0
-        for dim in reversed(dims):
-            while len(ret) < dim:
-                ret.append(tmp)
-            tmp = ret
-            ret = []
-        return tmp
-        
-    
-    
+        if len(dims) == 1:
+            while len(ret) < dims[0]:
+                ret.append(0)
+        else:
+            while len(ret) < dims[0]:
+                ret.append(zrs(dims[1:]))
+        return ret
     
     
     def on_game_start(self, config):
@@ -88,23 +88,60 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.test_strategy(game_state)
         game_state.submit_turn()
     
+    
+    
+    
+    def zrs(self,dims):
+        ret = []
+        if len(dims) == 1:
+            while len(ret) < dims[0]:
+                ret.append(0)
+        else:
+            while len(ret) < dims[0]:
+                ret.append(self.zrs(dims[1:]))
+        return ret
+    
+    def cpmat(self,m,dp):
+        ret = []
+        if dp == 1:
+            for x in m:
+                ret.append(x)
+        else:
+            for l in m:
+              ret.append(self.cpmat(l,dp-1))
+        return ret
+    
+    
+    
     def state_matrix(self, game_state):
         state_mat = []
         state_mat = self.zrs([3,28,28])
+        #used_pos = []
+        #np.save('/home/moritz/Documents/C1GamesStarterKit-master/algos/rating-algo/state_mat',state_mat)
         for pos in all_pos:
+            #if pos in used_pos:
+                #print('pos_doppelt')
+            #used_pos.append(pos)
             units = game_state.game_map[pos[0],pos[1]]
             for unit in units:
-                #print(unit.player_index,unit.unit_type)
+                #print(unit,units,state_mat[0][pos[0]][pos[1]],state_mat[1][pos[0]][pos[1]],state_mat[2][pos[0]][pos[1]])
                 if unit.unit_type == 'FF':
+                    #if state_mat[0][pos[0]][pos[1]] > 0:
+                    #    print(unit.unit_type,pos,state_mat[0][pos[0]][pos[1]],units,0.5 + 0.5*unit.stability/unit.max_stability)
                     state_mat[0][pos[0]][pos[1]] = state_mat[0][pos[0]][pos[1]] + 0.5 + 0.5*unit.stability/unit.max_stability
                 elif unit.unit_type == 'EF':
+                    #if state_mat[0][pos[0]][pos[1]] > 0:
+                    #    print(unit.unit_type,pos,state_mat[1][pos[0]][pos[1]],units,0.5 + 0.5*unit.stability/unit.max_stability)
                     state_mat[1][pos[0]][pos[1]] = state_mat[1][pos[0]][pos[1]] + 0.5 + 0.5*unit.stability/unit.max_stability
                 elif unit.unit_type == 'DF':
+                    #if state_mat[0][pos[0]][pos[1]] > 0:
+                    #    print(unit.unit_type,pos,state_mat[2][pos[0]][pos[1]],units,0.5 + 0.5*unit.stability/unit.max_stability)
                     state_mat[2][pos[0]][pos[1]] = state_mat[2][pos[0]][pos[1]] + 0.5 + 0.5*unit.stability/unit.max_stability
+                #print(unit,units,state_mat[0][pos[0]][pos[1]],state_mat[1][pos[0]][pos[1]],state_mat[2][pos[0]][pos[1]])
                 #else:
                     #print('Some thing wong with state_matrix')
                 
-        #np.save('/home/moritz/Documents/C1GamesStarterKit-master/algos/rating-algo/arr.dat',state_mat)
+        #np.save('/home/moritz/Documents/C1GamesStarterKit-master/algos/rating-algo/state_mat',state_mat)
         return state_mat
         
     
@@ -128,43 +165,44 @@ class AlgoStrategy(gamelib.AlgoCore):
     
     def nxt_moves(self, game_state, state_mat, info_vec):
         nxt_mvs = []
-        new_state_mat = state_mat
-        new_info_vec = info_vec
-        
+        new_state_mat = self.cpmat(state_mat,3)
+        new_info_vec = self.cpmat(info_vec,2)
+        #print(info_vec)
+        '''
         for pos in all_my_pos:
             if game_state.can_spawn(FILTER,pos):
                 new_state_mat[0][pos[0]][pos[1]] = state_mat[0][pos[0]][pos[1]] + 1
-                nxt_mvs.append([new_state_mat,info_vec,pos,FILTER])
+                nxt_mvs.append([self.cpmat(new_state_mat,3),self.cpmat(info_vec,2),pos,FILTER])
             
             if game_state.can_spawn(ENCRYPTOR,pos):
                 new_state_mat[1][pos[0]][pos[1]] = state_mat[1][pos[0]][pos[1]] + 1
-                nxt_mvs.append([new_state_mat,info_vec,pos,ENCRYPTOR])
+                nxt_mvs.append([self.cpmat(new_state_mat,3),self.cpmat(info_vec,2),pos,ENCRYPTOR])
             
             if game_state.can_spawn(DESTRUCTOR,pos):
                 new_state_mat[2][pos[0]][pos[1]] = state_mat[2][pos[0]][pos[1]] + 1
-                nxt_mvs.append([new_state_mat,info_vec,pos,DESTRUCTOR])
-            
+                nxt_mvs.append([self.cpmat(new_state_mat,3),self.cpmat(info_vec,2),pos,DESTRUCTOR])
+            '''
         
         for pos in my_edge_pos:
             if game_state.can_spawn(PING,pos):
                 new_info_vec[0][pos[0]] = info_vec[0][pos[0]] + 1
-                nxt_mvs.append([state_mat,new_info_vec,pos,PING])
+                nxt_mvs.append([self.cpmat(state_mat,3),self.cpmat(new_info_vec,2),pos,PING])
             
             if game_state.can_spawn(EMP,pos):
                 new_info_vec[1][pos[0]] = info_vec[1][pos[0]] + 1
-                nxt_mvs.append([state_mat,new_info_vec,pos,EMP])
+                nxt_mvs.append([self.cpmat(state_mat,3),self.cpmat(new_info_vec,2),pos,EMP])
             
             if game_state.can_spawn(SCRAMBLER,pos):
                 new_info_vec[2][pos[0]] = info_vec[2][pos[0]] + 1
-                nxt_mvs.append([state_mat,new_info_vec,pos,SCRAMBLER])
-            
+                nxt_mvs.append([self.cpmat(state_mat,3),self.cpmat(new_info_vec,2),pos,SCRAMBLER])
+            #print(info_vec)
         return nxt_mvs
     
     
     def r8gr8(self,state_mat,info_vec,game_state):
         state_vec = []
         for pos in all_pos:
-            for t in range(0,2):
+            for t in range(0,3):
                 state_vec.append(state_mat[t][pos[0]][pos[1]])
         
         state_vec = state_vec + info_vec[0] + info_vec[1] + info_vec[2]
@@ -173,7 +211,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         state_vec.append(game_state.get_resource(game_state.CORES,1))
         state_vec.append(game_state.get_resource(game_state.BITS,0))
         state_vec.append(game_state.get_resource(game_state.BITS,1))
-        
+        #print(state_vec)
         return random.randint(-100,100)
         
        
@@ -238,9 +276,11 @@ class AlgoStrategy(gamelib.AlgoCore):
         '''
         
         state_mat = self.state_matrix(game_state)
+        #print(state_mat)
         info_vec = self.info_vector(game_state)
+        print(info_vec)
         nxt_mvs = self.nxt_moves(game_state, state_mat, info_vec)
-        
+        np.save('/home/moritz/Documents/C1GamesStarterKit-master/algos/rating-algo/nxt',nxt_mvs)
         
         weights = []
         for st in nxt_mvs:
@@ -264,6 +304,8 @@ class AlgoStrategy(gamelib.AlgoCore):
                 weights.append(self.r8gr8(st[0],st[1],game_state))
             weights = self.softmax(weights)
             ind = self.pick_w8ed(weights)
+            
+        print(info_vec)
 
 if __name__ == "__main__":
     algo = AlgoStrategy()
